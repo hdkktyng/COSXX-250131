@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solving cos x = x by Iteration</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.0.1/chart.umd.min.js"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+        #canvasContainer {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            gap: 20px;
+        }
+        canvas {
+            max-width: 400px;
+            max-height: 400px;
+        }
+        #controls {
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Solving cos x = x by Iteration</h1>
+    <div id="controls">
+        <label for="x0">x<sub>0</sub>:</label>
+        <input type="number" id="x0" value="1" step="0.01" min="0" max="1.6">
+        <label for="maxIterations">Max Iterations:</label>
+        <input type="number" id="maxIterations" value="1000" step="1" min="1">
+        <label for="iterations">Current Step:</label>
+        <input type="number" id="iterations" value="0" readonly>
+        <button id="step">Step</button>
+        <button id="run">Run</button>
+        <button id="stop">Stop</button>
+        <button id="reset">Reset</button>
+    </div>
+    <div id="canvasContainer">
+        <canvas id="cobwebCanvas"></canvas>
+        <canvas id="timeSeriesCanvas"></canvas>
+    </div>
+
+    <script>
+        const cobwebCtx = document.getElementById('cobwebCanvas').getContext('2d');
+        const timeSeriesCtx = document.getElementById('timeSeriesCanvas').getContext('2d');
+
+        let cobwebChart, timeSeriesChart;
+        let trajectory = [];
+        let currentStep = 0;
+        let x = 1;
+        let maxIterations = 1000;
+        let running = false;
+        let intervalId;
+
+        function plotCosineMap(x0, iterations) {
+            const trajectory = [];
+            let x = x0;
+            for (let i = 0; i < iterations; i++) {
+                trajectory.push(x);
+                x = Math.cos(x);
+            }
+            return trajectory;
+        }
+
+        function plotCobweb(trajectory, currentStep) {
+            const data = [];
+            const equationData = [];
+            const yEqualsXData = [];
+
+            for (let x = 0; x <= 1.6; x += 0.02) {
+                equationData.push({ x, y: Math.cos(x) });
+                yEqualsXData.push({ x, y: x });
+            }
+            data.push({ x: trajectory[0], y: 0 });
+data.push({ x: trajectory[0], y: trajectory[1] });
+for (let i = 1; i <= currentStep && i < trajectory.length - 1; i++) {
+                data.push({ x: trajectory[i], y: trajectory[i] });
+                data.push({ x: trajectory[i], y: trajectory[i + 1] });
+            }
+
+            if (cobwebChart) cobwebChart.destroy();
+            cobwebChart = new Chart(cobwebCtx, {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        { label: 'Cosine Function', data: equationData, borderColor: 'blue', showLine: true, pointRadius: 0 },
+                        { label: 'y = x', data: yEqualsXData, borderColor: 'black', showLine: true, borderDash: [5, 5], pointRadius: 0 },
+                        { label: 'Cobweb Plot', data, borderColor: 'red', showLine: true, pointRadius: 3 }
+                    ]
+                },
+                options: {
+                    animation: false,
+                    scales: { x: { min: 0, max: 1.6 }, y: { min: 0, max: 1.6 } }
+                }
+            });
+        }
+
+        function plotTimeSeries(trajectory, currentStep) {
+            const data = trajectory.slice(0, currentStep).map((y, x) => ({ x, y }));
+
+            if (timeSeriesChart) timeSeriesChart.destroy();
+            timeSeriesChart = new Chart(timeSeriesCtx, {
+                type: 'scatter',
+                data: { datasets: [{ label: 'Time Series', data, borderColor: 'green', showLine: true, pointRadius: 3 }] },
+                options: { animation: false, scales: { x: { min: 0 }, y: { min: 0, max: 1.6 } } }
+            });
+        }
+
+        document.getElementById('reset').addEventListener('click', () => {
+            x = parseFloat(document.getElementById('x0').value);
+            maxIterations = parseInt(document.getElementById('maxIterations').value, 10);
+            currentStep = 0;
+            document.getElementById('iterations').value = currentStep;
+            trajectory = plotCosineMap(x, maxIterations);
+            plotCobweb(trajectory, currentStep);
+            plotTimeSeries(trajectory, currentStep);
+            running = false;
+            clearInterval(intervalId);
+        });
+
+        document.getElementById('step').addEventListener('click', () => {
+            if (currentStep < trajectory.length - 1) {
+                currentStep++;
+                document.getElementById('iterations').value = currentStep;
+                plotCobweb(trajectory, currentStep);
+                plotTimeSeries(trajectory, currentStep);
+            }
+        });
+
+        document.getElementById('run').addEventListener('click', () => {
+            if (!running) {
+                running = true;
+                intervalId = setInterval(() => {
+                    if (currentStep < trajectory.length - 1) {
+                        currentStep++;
+                        document.getElementById('iterations').value = currentStep;
+                        plotCobweb(trajectory, currentStep);
+                        plotTimeSeries(trajectory, currentStep);
+                    } else {
+                        clearInterval(intervalId);
+                        running = false;
+                    }
+                }, 100);
+            }
+        });
+
+        document.getElementById('stop').addEventListener('click', () => { running = false; clearInterval(intervalId); });
+
+        document.getElementById('reset').click();
+    </script>
+</body>
+</html>
